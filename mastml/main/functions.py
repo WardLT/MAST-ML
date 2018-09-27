@@ -1,7 +1,5 @@
 __all__ = [
            '_exclude_validation',
-           'get_commandline_args',
-           'check_paths',
            '_extract_grouping_column_names',
            '_snatch_models',
            '_snatch_splitters',
@@ -12,11 +10,9 @@ __all__ = [
            ]
 
 from collections import OrderedDict
-from datetime import datetime
 from os.path import join
 
 import pandas as pd
-import argparse
 import logging
 import os
 
@@ -165,106 +161,3 @@ def _exclude_validation(df, validation_column):
 
 def _only_validation(df, validation_column):
     return df.loc[validation_column == 1]
-
-
-def check_paths(conf_path, data_path, outdir):
-    # Check conf path:
-    if os.path.splitext(conf_path)[1] != '.conf':
-        raise utils.FiletypeError(
-                                  f"Conf file does not end"
-                                  f"in .conf: '{conf_path}'"
-                                  )
-
-    if not os.path.isfile(conf_path):
-        raise utils.FileNotFoundError(f"No such file: {conf_path}")
-
-    # Check data path:
-    if os.path.splitext(data_path)[1] not in ['.csv', '.xlsx']:
-        raise utils.FiletypeError(
-                                  f"Data file does not end in .csv"
-                                  f"or .xlsx: '{data_path}'"
-                                  )
-
-    if not os.path.isfile(data_path):
-        raise utils.FileNotFoundError(f"No such file: {data_path}")
-
-    # Check output directory:
-
-    if os.path.exists(outdir):
-        try:
-            os.rmdir(outdir)  # succeeds if empty
-        except OSError:  # directory not empty
-            log.warning(f"{outdir} not empty. Renaming...")
-            now = datetime.now()
-            outdir = outdir.rstrip(os.sep)  # remove trailing slash
-            outdir = f"{outdir}_{now.month:02d}_{now.day:02d}" \
-                     f"_{now.hour:02d}_{now.minute:02d}_{now.second:02d}"
-    os.makedirs(outdir)
-    log.info(f"Saving to directory '{outdir}'")
-
-    return conf_path, data_path, outdir
-
-
-def get_commandline_args():
-    parser = argparse.ArgumentParser(description=(
-                                                  'MAterials Science '
-                                                  'Toolkit - Machine Learning'
-                                                  ))
-
-    parser.add_argument(
-                        'conf_path',
-                        type=str,
-                        help='path to mastml .conf file'
-                        )
-
-    parser.add_argument(
-                        'data_path',
-                        type=str,
-                        help='path to csv or xlsx file'
-                        )
-
-    parser.add_argument(
-                        '-o',
-                        action="store",
-                        dest='outdir',
-                        default='results',
-                        help=(
-                              'Folder path to save output '
-                              'files to. Defaults to results/'
-                              )
-                        )
-
-    # from https://stackoverflow.com/a/14763540
-    # we only use them to set a bool but it
-    # would be nice to have multiple levels in the future
-    parser.add_argument(
-                        '-v',
-                        '--verbosity',
-                        action="count",
-                        help="include this flag for more verbose output"
-                        )
-
-    parser.add_argument(
-                        '-q',
-                        '--quietness',
-                        action="count",
-                        help=(
-                              "include this flag to hide [DEBUG]"
-                              "printouts, or twice to hide [INFO]"
-                              )
-                        )
-
-    args = parser.parse_args()
-
-    verbosity = (
-                 (args.verbosity if args.verbosity else 0) -
-                 (args.quietness if args.quietness else 0)
-                 )
-
-    # verbosity -= 1 ## uncomment this for distribution
-    return (
-            os.path.abspath(args.conf_path),
-            os.path.abspath(args.data_path),
-            os.path.abspath(args.outdir),
-            verbosity
-            )

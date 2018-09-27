@@ -2,9 +2,10 @@
 Module for getting a mastml system call and calling all the appropriate subroutines
 """
 
+from .main.argparser import *
 from .main.functions import *
+from. main.pathcheck import *
 
-import argparse
 import inspect
 import os
 import shutil
