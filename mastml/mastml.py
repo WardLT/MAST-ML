@@ -1,31 +1,49 @@
 """
-Module for getting a mastml system call and calling all the appropriate subroutines
+Module for getting a mastml system call and calling all the appropriate
+subroutines
 """
+
+from sklearn.exceptions import UndefinedMetricWarning
+from sklearn.model_selection import LeaveOneGroupOut
+from sklearn.externals import joblib
+
+from . import (
+               conf_parser,
+               data_loader,
+               html_helper,
+               plot_helper,
+               utils,
+               learning_curve,
+               data_cleaner
+               )
+
+from .legos import clusterers as legos_clusterers
+from .legos import (
+                    data_splitters,
+                    feature_generators,
+                    feature_normalizers,
+                    feature_selectors,
+                    model_finder,
+                    util_legos
+                    )
+
+from collections import OrderedDict
+from datetime import datetime
+from functools import reduce
+from os.path import join
 
 from .main.argparser import *
 from .main.functions import *
-from. main.pathcheck import *
+from .main.pathcheck import *
 
-import inspect
-import os
-import shutil
-import logging
-import warnings
-from datetime import datetime
-from collections import OrderedDict
-from os.path import join # We use join tons
-from functools import reduce
-
-import numpy as np
 import pandas as pd
-from sklearn.externals import joblib
-from sklearn.exceptions import UndefinedMetricWarning
-from sklearn.model_selection import LeaveOneGroupOut
+import numpy as np
 
-from . import conf_parser, data_loader, html_helper, plot_helper, utils, learning_curve, data_cleaner
-from .legos import (data_splitters, feature_generators, feature_normalizers,
-                    feature_selectors, model_finder, util_legos)
-from .legos import clusterers as legos_clusterers
+import warnings
+import inspect
+import logging
+import shutil
+import os
 
 log = logging.getLogger('mastml')
 
