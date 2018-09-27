@@ -2,6 +2,8 @@
 Module for getting a mastml system call and calling all the appropriate subroutines
 """
 
+from .main.functions import *
+
 import argparse
 import inspect
 import os
@@ -62,7 +64,7 @@ def mastml_run(conf_path, data_path, outdir):
     conf = conf_parser.parse_conf_file(conf_path)
     PlotSettings = conf['PlotSettings']
     is_classification = conf['is_classification']
-    # The df is used by feature generators, clusterers, and grouping_column to 
+    # The df is used by feature generators, clusterers, and grouping_column to
     # create more features for x.
     # X is model input, y is target feature for model
     df, X, X_noinput, X_grouped, y = data_loader.load_data(data_path,
@@ -368,12 +370,12 @@ def mastml_run(conf_path, data_path, outdir):
             pairs = []
 
             def fix_index(array):
-                return X_.index.values[array] 
+                return X_.index.values[array]
 
             def proper_index(splits):
-                """ For example, if X's indexs are [1,4,6] and you split 
-                [ [[0],[1,2]], [[1],[0,2]] ] then we would get 
-                [ [[1],[4,6]], [[4],[1,6]] ] 
+                """ For example, if X's indexs are [1,4,6] and you split
+                [ [[0],[1,2]], [[1],[0,2]] ] then we would get
+                [ [[1],[4,6]], [[4],[1,6]] ]
                 Needed only for valdation row stuff.
                 """
                 return tuple(tuple(fix_index(part) for part in split) for split in splits)
@@ -384,7 +386,7 @@ def mastml_run(conf_path, data_path, outdir):
             splitter_to_group_column_no_validation = dict()
             for name, instance in splitters:
                 # if this splitter depends on grouping
-                if name in splitter_to_group_names: 
+                if name in splitter_to_group_names:
                     col = splitter_to_group_names[name]
                     log.debug(f"    Finding {col} for {name}...")
                     # Locate the grouping column among all dataframes
@@ -426,7 +428,7 @@ def mastml_run(conf_path, data_path, outdir):
                                                        f'was neither generated nor given by input')
 
                 # If we don't need grouping column
-                else: 
+                else:
                     splitter_to_group_column[name] = None
                     split = proper_index(instance.split(X_, y_))
                     pairs.append((name, split))
@@ -524,7 +526,7 @@ def mastml_run(conf_path, data_path, outdir):
                             .to_csv(join(path, 'predictions_'+str(validation_column_name)+'.csv'), index=False)
             else:
                 validation_y = None
-            
+
 
             # Save train and test data and results to csv:
             log.info("             Saving train/test data and predictions to csv...")
@@ -599,7 +601,7 @@ def mastml_run(conf_path, data_path, outdir):
             log.info("             Making plots...")
             if PlotSettings['train_test_plots']:
                 plot_helper.make_train_test_plots(
-                        split_result, path, is_classification, 
+                        split_result, path, is_classification,
                         label=y.name, model=model, train_X=train_X, test_X=test_X, groups=grouping_data)
 
             if is_validation:
@@ -717,156 +719,6 @@ def _instantiate(kwargs_dict, name_to_constructor, category, X_grouped=None, X_i
                 f"All valid {category}: {list(name_to_constructor.keys())}")
 
     return instantiations
-
-def _grouping_column_to_group_number(X_grouped):
-    group_list = X_grouped.values.reshape((1, -1))
-    unique_groups = np.unique(group_list).tolist()
-    group_dict = dict()
-    group_list_asnumber = list()
-    for i, group in enumerate(unique_groups):
-        group_dict[group] = i+1
-    for i, group in enumerate(group_list.tolist()[0]):
-        group_list_asnumber.append(group_dict[group])
-    X_grouped_asnumber = np.asarray(group_list_asnumber)
-    return X_grouped_asnumber
-
-def _snatch_models(models, conf_feature_selection):
-    log.debug(f'models, pre-snatching: \n{models}')
-    for selector_name, (_, args_dict) in conf_feature_selection.items():
-        if 'estimator' in args_dict:
-            model_name = args_dict['estimator']
-            try:
-                args_dict['estimator'] = models[model_name]
-                del models[model_name]
-            except KeyError:
-                raise utils.MastError(f"The selector {selector_name} specified model {model_name},"
-                                      f"which was not found in the [Models] section")
-    log.debug(f'models, post-snatching: \n{models}')
-
-def _snatch_splitters(splitters, conf_feature_selection):
-    log.debug(f'cv, pre-snatching: \n{splitters}')
-    for selector_name, (_, args_dict) in conf_feature_selection.items():
-        # Here: add snatch to cv object for feature selection with RFECV
-        if 'cv' in args_dict:
-            cv_name = args_dict['cv']
-            try:
-                args_dict['cv'] = splitters[cv_name]
-                del splitters[cv_name]
-            except KeyError:
-                raise utils.MastError(f"The selector {selector_name} specified cv splitter {cv_name},"
-                                      f"which was not found in the [DataSplits] section")
-    log.debug(f'cv, post-snatching: \n{splitters}')
-
-def _extract_grouping_column_names(splitter_to_kwargs):
-    splitter_to_group_names = dict()
-    for splitter_name, name_and_kwargs in splitter_to_kwargs.items():
-        _, kwargs = name_and_kwargs
-        if 'grouping_column' in kwargs:
-            column_name = kwargs['grouping_column']
-            del kwargs['grouping_column'] # because the splitter doesn't actually take this
-            splitter_to_group_names[splitter_name] = column_name
-    return splitter_to_group_names
-
-def _remove_constant_features(df):
-    log.info("Removing constant features, regardless of feature selectors.")
-    before = set(df.columns)
-    df = df.loc[:, (df != df.iloc[0]).any()]
-    removed = list(before - set(df.columns))
-    if removed != []:
-        log.warning(f'Removed {len(removed)}/{len(before)} constant columns.')
-        log.debug("Removed the following constant columns: " + str(removed))
-    return df
-
-def _save_all_runs(runs, outdir):
-    """
-    Produces a giant html table of all stats for all runs
-    """
-    table = []
-    for run in runs:
-        od = OrderedDict()
-        for name, value in run.items():
-            if name == 'train_metrics':
-                for k, v in run['train_metrics'].items():
-                    od['train_'+k] = v
-            elif name == 'test_metrics':
-                for k, v in run['test_metrics'].items():
-                    od['test_'+k] = v
-            else:
-                od[name] = value
-        table.append(od)
-    pd.DataFrame(table).to_html(join(outdir, 'all_runs_table.html'))
-
-def _write_stats(train_metrics, test_metrics, outdir, prediction_metrics=None, prediction_names=None):
-    with open(join(outdir, 'stats.txt'), 'w') as f:
-        f.write("TRAIN:\n")
-        for name,score in train_metrics.items():
-            f.write(f"{name}: {'%.3f'%float(score)}\n")
-        f.write("TEST:\n")
-        for name,score in test_metrics.items():
-                f.write(f"{name}: {'%.3f'%float(score)}\n")
-        if prediction_metrics:
-            #prediction metrics now list of dicts for predicting multiple values
-            for prediction_metric, prediction_name in zip(prediction_metrics, prediction_names):
-                f.write("PREDICTION for "+str(prediction_name)+":\n")
-                for name, score in prediction_metric.items():
-                    f.write(f"{name}: {'%.3f'%float(score)}\n")
-
-def _exclude_validation(df, validation_column):
-    return df.loc[validation_column != 1]
-
-def _only_validation(df, validation_column):
-    return df.loc[validation_column == 1]
-
-def check_paths(conf_path, data_path, outdir):
-    # Check conf path:
-    if os.path.splitext(conf_path)[1] != '.conf':
-        raise utils.FiletypeError(f"Conf file does not end in .conf: '{conf_path}'")
-    if not os.path.isfile(conf_path):
-        raise utils.FileNotFoundError(f"No such file: {conf_path}")
-
-    # Check data path:
-    if os.path.splitext(data_path)[1] not in ['.csv', '.xlsx']:
-        raise utils.FiletypeError(f"Data file does not end in .csv or .xlsx: '{data_path}'")
-    if not os.path.isfile(data_path):
-        raise utils.FileNotFoundError(f"No such file: {data_path}")
-
-    # Check output directory:
-
-    if os.path.exists(outdir):
-        try:
-            os.rmdir(outdir) # succeeds if empty
-        except OSError: # directory not empty
-            log.warning(f"{outdir} not empty. Renaming...")
-            now = datetime.now()
-            outdir = outdir.rstrip(os.sep) # remove trailing slash
-            outdir = f"{outdir}_{now.month:02d}_{now.day:02d}" \
-                     f"_{now.hour:02d}_{now.minute:02d}_{now.second:02d}"
-    os.makedirs(outdir)
-    log.info(f"Saving to directory '{outdir}'")
-
-    return conf_path, data_path, outdir
-
-def get_commandline_args():
-    parser = argparse.ArgumentParser(description='MAterials Science Toolkit - Machine Learning')
-    parser.add_argument('conf_path', type=str, help='path to mastml .conf file')
-    parser.add_argument('data_path', type=str, help='path to csv or xlsx file')
-    parser.add_argument('-o', action="store", dest='outdir', default='results',
-                        help='Folder path to save output files to. Defaults to results/')
-    # from https://stackoverflow.com/a/14763540
-    # we only use them to set a bool but it would be nice to have multiple levels in the future
-    parser.add_argument('-v', '--verbosity', action="count",
-                        help="include this flag for more verbose output")
-    parser.add_argument('-q', '--quietness', action="count",
-                       help="include this flag to hide [DEBUG] printouts, or twice to hide [INFO]")
-
-    args = parser.parse_args()
-    verbosity = (args.verbosity if args.verbosity else 0)\
-            - (args.quietness if args.quietness else 0)
-    # verbosity -= 1 ## uncomment this for distribution
-    return (os.path.abspath(args.conf_path),
-            os.path.abspath(args.data_path),
-            os.path.abspath(args.outdir),
-            verbosity)
 
 if __name__ == '__main__':
     conf_path, data_path, outdir, verbosity = get_commandline_args()
