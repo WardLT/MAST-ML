@@ -1,6 +1,5 @@
 __all__ = ['datcln']
 
-
 from .. import data_cleaner
 
 
@@ -66,6 +65,7 @@ def datcln(dc, df, X, X_noinput, X_grouped):
 
         df = data_cleaner.ppca(df, X_noinput.columns)
         X = data_cleaner.ppca(X)
+
     else:
         log.error(
                   "You have specified an invalid data cleaning method. "

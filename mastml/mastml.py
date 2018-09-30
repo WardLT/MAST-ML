@@ -32,6 +32,7 @@ from datetime import datetime
 from functools import reduce
 from os.path import join
 
+from .main.validation_column_parameters import *
 from .main.perform_data_cleaning import *
 from .main.argparser import *
 from .main.functions import *
@@ -105,36 +106,24 @@ def mastml_run(conf_path, data_path, outdir):
 
     # get parameters out for 'validation_column'
     is_validation = 'validation_columns' in conf['GeneralSetup']
-    if is_validation:
-        if type(conf['GeneralSetup']['validation_columns']) is list:
-            validation_column_names = list(conf['GeneralSetup']['validation_columns'])
-        elif type(conf['GeneralSetup']['validation_columns']) is str:
-            validation_column_names = list()
-            validation_column_names.append(conf['GeneralSetup']['validation_columns'][:])
-        validation_columns = dict()
-        for validation_column_name in validation_column_names:
-            validation_columns[validation_column_name] = df[validation_column_name]
-        validation_columns = pd.DataFrame(validation_columns)
-        validation_X = list()
-        validation_y = list()
 
-        # TODO make this block its own function
-        for validation_column_name in validation_column_names:
-            # X_, y_ = _exclude_validation(X, validation_columns[validation_column_name]), _exclude_validation(y, validation_columns[validation_column_name])
-            validation_X.append(pd.DataFrame(_exclude_validation(X, validation_columns[validation_column_name])))
-            validation_y.append(pd.DataFrame(_exclude_validation(y, validation_columns[validation_column_name])))
-        idxy_list = list()
-        for i, _ in enumerate(validation_y):
-            idxy_list.append(validation_y[i].index)
-        # Get intersection of indices between all prediction columns
-        intersection = reduce(np.intersect1d, (i for i in idxy_list))
-        X_novalidation = X.iloc[intersection]
-        y_novalidation = y.iloc[intersection]
-        X_grouped_novalidation = X_grouped.iloc[intersection]
-    else:
-        X_novalidation = X
-        y_novalidation = y
-        X_grouped_novalidation = X_grouped
+    temp = valcolpar(
+                     df,
+                     conf,
+                     is_validation,
+                     _exclude_validation,
+                     X,
+                     y,
+                     X_grouped
+                     )
+
+    (
+    validation_columns,
+    validation_column_names,
+    X_novalidation,
+    y_novalidation,
+    X_grouped_novalidation
+    ) = temp
 
     if conf['PlotSettings']['target_histogram']:
         # First, save input data stats to csv
