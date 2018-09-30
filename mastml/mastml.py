@@ -49,32 +49,51 @@ import os
 
 log = logging.getLogger('mastml')
 
+
 def main(conf_path, data_path, outdir, verbosity=0):
     " Sets up logger and error catching, then starts the run "
     conf_path, data_path, outdir = check_paths(conf_path, data_path, outdir)
 
-    utils.activate_logging(outdir, (conf_path, data_path, outdir), verbosity=verbosity)
+    utils.activate_logging(
+                           outdir,
+                           (conf_path, data_path, outdir),
+                           verbosity=verbosity
+                           )
 
     if verbosity >= 1:
-        warnings.simplefilter('error') # turn warnings into errors
+        warnings.simplefilter('error')  # turn warnings into errors
+
     elif verbosity <= -1:
-        warnings.simplefilter('ignore') # ignore warnings
+        warnings.simplefilter('ignore')  # ignore warnings
 
     try:
         mastml_run(conf_path, data_path, outdir)
+
     except utils.MastError as e:
-        # catch user errors, log and print, but don't raise and show them that nasty stack
+        # catch user errors, log and print, but don't raise and
+        # show them that nasty stack
         log.error(str(e))
+
     except Exception as e:
         # catch the error, save it to file, then raise it back up
-        log.error('A runtime exception has occured, please go to '
-                      'https://github.com/uw-cmg/MAST-ML/issues and post your issue.')
+        log.error(
+                  'A runtime exception has occured, please go to '
+                  'https://github.com/uw-cmg/MAST-ML/issues and '
+                  'post your issue.'
+                  )
+
         log.exception(e)
+
         raise e
-    return outdir # so a calling program can know where we actually saved it
+
+    return outdir  # so a calling program can know where we actually saved it
+
 
 def mastml_run(conf_path, data_path, outdir):
-    " Runs operations specifed in conf_path on data_path and puts results in outdir "
+    """
+    Runs operations specifed in conf_path on data_path
+    and puts results in outdir
+    """
 
     # Copy the original input files to the output directory for easy reference
     log.info("Copying input files to output directory...")
@@ -88,11 +107,15 @@ def mastml_run(conf_path, data_path, outdir):
     # The df is used by feature generators, clusterers, and grouping_column to
     # create more features for x.
     # X is model input, y is target feature for model
-    df, X, X_noinput, X_grouped, y = data_loader.load_data(data_path,
-                                     conf['GeneralSetup']['input_features'],
-                                     conf['GeneralSetup']['target_feature'],
-                                     conf['GeneralSetup']['grouping_feature'],
-                                     conf['GeneralSetup']['not_input_features'])
+    temp = data_loader.load_data(
+                                 data_path,
+                                 conf['GeneralSetup']['input_features'],
+                                 conf['GeneralSetup']['target_feature'],
+                                 conf['GeneralSetup']['grouping_feature'],
+                                 conf['GeneralSetup']['not_input_features']
+                                 )
+
+    df, X, X_noinput, X_grouped, y = temp
 
     # Perform data cleaning here
     dc = conf['DataCleaning']
@@ -666,11 +689,13 @@ def mastml_run(conf_path, data_path, outdir):
     log.info("Making html file of all runs stats...")
     _save_all_runs(runs, outdir)
 
+
 def _instantiate(kwargs_dict, name_to_constructor, category, X_grouped=None, X_indices=None):
     """
     Uses name_to_constructor to instantiate every item in kwargs_dict and return
     the list of instantiations
     """
+
     instantiations = []
     for long_name, (name, kwargs) in kwargs_dict.items():
         log.debug(f'instantiation: {long_name}, {name}({kwargs})')
