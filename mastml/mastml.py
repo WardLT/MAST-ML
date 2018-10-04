@@ -34,6 +34,7 @@ from os.path import join
 
 from .main.validation_column_parameters import *
 from .main.perform_data_cleaning import *
+from .main.learning_score import *
 from .main.argparser import *
 from .main.functions import *
 from .main.pathcheck import *
@@ -211,24 +212,11 @@ def mastml_run(conf_path, data_path, outdir):
                              'datasplit'
                              )
 
-    def snatch_model_cv_and_scoring_for_learning_curve():
-        if conf['LearningCurve']:
-            # Get model
-            name = conf['LearningCurve']['estimator']
-            conf['LearningCurve']['estimator'] = models[name]
-            del models[name]
-            # Get cv
-            name = conf['LearningCurve']['cv']
-            splitter_count = 0
-            for splitter in splitters:
-                if name in splitter:
-                    conf['LearningCurve']['cv'] = splitter[1]
-                    break
-                else:
-                    splitter_count += 1
-            del splitters[splitter_count]
-
-    snatch_model_cv_and_scoring_for_learning_curve()
+    conf['LearningCurve'], models, splitters = score(
+                                                     conf['LearningCurve'],
+                                                     models,
+                                                     splitters
+                                                     )
 
     models = list(models.items())
 
