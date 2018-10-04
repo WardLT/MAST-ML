@@ -123,8 +123,12 @@ def mastml_run(conf_path, data_path, outdir):
 
     # randomly shuffles y values if randomizer is on
     if conf['GeneralSetup']['randomizer'] is True:
-        log.warning("Randomizer is enabled, so target feature will be shuffled,"
-                 " and results should be null for a given model")
+        log.warning(
+                    "Randomizer is enabled, so target feature "
+                    "will be shuffled, "
+                    "and results should be null for a given model"
+                    )
+
         y = y.sample(frac=1).reset_index(drop=True)
 
     # get parameters out for 'validation_column'
@@ -140,48 +144,72 @@ def mastml_run(conf_path, data_path, outdir):
                      X_grouped
                      )
 
-    (
-    validation_columns,
-    validation_column_names,
-    X_novalidation,
-    y_novalidation,
-    X_grouped_novalidation
-    ) = temp
+    validation_columns = temp[0]
+    validation_column_names = temp[1]
+    X_novalidation = temp[2]
+    y_novalidation = temp[3]
+    X_grouped_novalidation = temp[4]
 
     if conf['PlotSettings']['target_histogram']:
         # First, save input data stats to csv
-        y.describe().to_csv(join(outdir, 'input_data_statistics.csv'))
-        plot_helper.plot_target_histogram(y, join(outdir, 'target_histogram.png'), label=y.name)
+        y.describe().to_csv(join(
+                                 outdir,
+                                 'input_data_statistics.csv'
+                                 ))
+
+        plot_helper.plot_target_histogram(
+                                          y,
+                                          join(outdir, 'target_histogram.png'),
+                                          label=y.name
+                                          )
 
     # Get the appropriate collection of metrics:
     metrics_dict = conf['GeneralSetup']['metrics']
 
-    # Extract columns that some splitter need to do grouped splitting using 'grouping_column'
-    # special argument
-    splitter_to_group_names = _extract_grouping_column_names(conf['DataSplits'])
+    '''
+    Extract columns that some splitter need to do grouped
+    splitting using 'grouping_column' special argument
+    '''
+    splitter_to_group_names = _extract_grouping_column_names(
+                                                             conf['DataSplits']
+                                                             )
     log.debug('splitter_to_group_names:\n' + str(splitter_to_group_names))
 
-    # Instantiate models first so we can snatch them and pass them into feature selectors
+    '''
+    Instantiate models first so we can snatch them and pass
+    them into feature selectors
+    '''
     models = _instantiate(conf['Models'],
                           model_finder.name_to_constructor,
                           'model')
-    models = OrderedDict(models) # for easier modification
+    models = OrderedDict(models)  # for easier modification
 
     _snatch_models(models, conf['FeatureSelection'])
 
     # Instantiate all the sections of the conf file:
-    generators  = _instantiate(conf['FeatureGeneration'],
-                               feature_generators.name_to_constructor,
-                               'featuregenerator')
-    clusterers  = _instantiate(conf['Clustering'],
-                               legos_clusterers.name_to_constructor,
-                               'clusterer')
-    normalizers = _instantiate(conf['FeatureNormalization'],
+    generators = _instantiate(
+                              conf['FeatureGeneration'],
+                              feature_generators.name_to_constructor,
+                              'featuregenerator'
+                              )
+
+    clusterers = _instantiate(
+                              conf['Clustering'],
+                              legos_clusterers.name_to_constructor,
+                              'clusterer'
+                              )
+
+    normalizers = _instantiate(
+                               conf['FeatureNormalization'],
                                feature_normalizers.name_to_constructor,
-                               'featurenormalizer')
-    splitters   = _instantiate(conf['DataSplits'],
-                               data_splitters.name_to_constructor,
-                               'datasplit')
+                               'featurenormalizer'
+                               )
+
+    splitters = _instantiate(
+                             conf['DataSplits'],
+                             data_splitters.name_to_constructor,
+                             'datasplit'
+                             )
 
     def snatch_model_cv_and_scoring_for_learning_curve():
         if conf['LearningCurve']:
@@ -209,9 +237,14 @@ def mastml_run(conf_path, data_path, outdir):
     _snatch_splitters(splitters, conf['FeatureSelection'])
     splitters = list(splitters.items())
 
-    selectors   = _instantiate(conf['FeatureSelection'],
-                               feature_selectors.name_to_constructor,
-                               'featureselector', X_grouped=np.array(X_grouped).reshape(-1, ), X_indices=np.array(X.index.tolist()).reshape(-1, 1))
+    temp = np.array(X.index.tolist()).reshape(-1, 1)
+    selectors = _instantiate(
+                             conf['FeatureSelection'],
+                             feature_selectors.name_to_constructor,
+                             'featureselector',
+                             X_grouped=np.array(X_grouped).reshape(-1, ),
+                             X_indices=temp
+                             )
 
     log.debug(f'generators: \n{generators}')
     log.debug(f'clusterers: \n{clusterers}')
@@ -220,8 +253,12 @@ def mastml_run(conf_path, data_path, outdir):
     log.debug(f'splitters: \n{splitters}')
 
     def do_all_combos(X, y, df):
-        log.info(f"There are {len(normalizers)} feature normalizers, {len(selectors)} feature"
-                 f"selectors {len(models)} models, and {len(splitters)} splitters.")
+        log.info(
+                 f"There are {len(normalizers)}"
+                 f" feature normalizers, {len(selectors)} feature"
+                 f"selectors {len(models)} models, "
+                 f"and {len(splitters)} splitters."
+                 )
 
         def generate_features():
             log.info("Doing feature generation...")
