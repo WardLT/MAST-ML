@@ -278,7 +278,7 @@ def mastml_run(conf_path, data_path, outdir):
             if not repeated_columns.empty:
                 log.warning(f"Throwing away {len(repeated_columns)} because they are repeats.")
                 log.debug(f"Throwing away columns because they are repeats: {repeated_columns}")
-                X = X.loc[:,~X.columns.duplicated()]
+                X = X.loc[:, ~X.columns.duplicated()]
             return X
         X = remove_repeats(X)
 
@@ -288,21 +288,27 @@ def mastml_run(conf_path, data_path, outdir):
             for name, instance in clusterers:
                 clustered_df[name] = instance.fit_predict(X, y)
             return clustered_df
-        clustered_df = make_clustered_df() # Each column is a clustering algorithm
+        clustered_df = make_clustered_df()  # Each column is a clustering algorithm
 
         def make_feature_vs_target_plots():
             if clustered_df.empty:
-                for column in X: # plot y against each x column
+                for column in X:  # plot y against each x column
                     filename = f'{column}_vs_target_scatter.png'
                     plot_helper.plot_scatter(X[column], y, join(outdir, filename),
                                              xlabel=column, groups=None, ylabel='target_feature', label=y.name)
             else:
-                for name in clustered_df.columns: # for each cluster, plot y against each x column
+                for name in clustered_df.columns:  # for each cluster, plot y against each x column
                     for column in X:
                         filename = f'{column}_vs_target_by_{name}_scatter.png'
-                        plot_helper.plot_scatter(X[column], y, join(outdir, filename),
-                                                clustered_df[name], xlabel=column,
-                                                ylabel='target_feature', label=y.name)
+                        plot_helper.plot_scatter(
+                                                 X[column],
+                                                 y,
+                                                 join(outdir, filename),
+                                                 clustered_df[name],
+                                                 xlabel=column,
+                                                 ylabel='target_feature', label=y.name
+                                                 )
+
         if PlotSettings['feature_vs_target']:
             make_feature_vs_target_plots()
 
@@ -339,23 +345,33 @@ def mastml_run(conf_path, data_path, outdir):
                     for s in scoring_name.split('_'):
                         scoring_name_nice += s + ' '
                     # Do sample learning curve
-                    train_sizes, train_mean, test_mean, train_stdev, test_stdev = learning_curve.sample_learning_curve(X=X_novalidation, y=y_novalidation,
-                                                            estimator=learning_curve_estimator, cv=learning_curve_cv,
-                                                            scoring=learning_curve_scoring, Xgroups=X_grouped_novalidation)
+                    train_sizes, train_mean, test_mean, train_stdev, test_stdev = learning_curve.sample_learning_curve(
+                                                                                                                       X=X_novalidation,
+                                                                                                                       y=y_novalidation,
+                                                                                                                       estimator=learning_curve_estimator,
+                                                                                                                       cv=learning_curve_cv,
+                                                                                                                       scoring=learning_curve_scoring,
+                                                                                                                       Xgroups=X_grouped_novalidation
+                                                                                                                       )
+
                     plot_helper.plot_learning_curve(train_sizes, train_mean, test_mean, train_stdev, test_stdev,
                                                     scoring_name_nice, 'sample_learning_curve',
                                                     join(dirname, f'data_learning_curve'))
                     # Do feature learning curve
-                    train_sizes, train_mean, test_mean, train_stdev, test_stdev = learning_curve.feature_learning_curve(X=X_novalidation, y=y_novalidation,
-                                                            estimator=learning_curve_estimator, cv=learning_curve_cv,
-                                                            scoring=learning_curve_scoring, selector_name=selector_name,
-                                                            n_features_to_select=n_features_to_select,
-                                                            Xgroups=X_grouped_novalidation)
+                    train_sizes, train_mean, test_mean, train_stdev, test_stdev = learning_curve.feature_learning_curve(
+                                                                                                                        X=X_novalidation,
+                                                                                                                        y=y_novalidation,
+                                                                                                                        estimator=learning_curve_estimator,
+                                                                                                                        cv=learning_curve_cv,
+                                                                                                                        scoring=learning_curve_scoring,
+                                                                                                                        selector_name=selector_name,
+                                                                                                                        n_features_to_select=n_features_to_select,
+                                                                                                                        Xgroups=X_grouped_novalidation
+                                                                                                                        )
+
                     plot_helper.plot_learning_curve(train_sizes, train_mean, test_mean, train_stdev, test_stdev,
                                                     scoring_name_nice, 'feature_learning_curve',
                                                     join(dirname, f'feature_learning_curve'))
-
-
 
                 log.info("Running selectors...")
                 for selector_name, selector_instance in selectors:
@@ -374,16 +390,17 @@ def mastml_run(conf_path, data_path, outdir):
             return triples
         normalizer_selector_dataframe_triples = make_normalizer_selector_dataframe_triples()
 
-        ## DataSplits (cross-product)
-        ## Collect grouping columns, splitter_to_group_names is a dict of splitter name to grouping col
+        # DataSplits (cross-product)
+        # Collect grouping columns, splitter_to_group_names is a dict of splitter name to grouping col
         log.debug("Finding splitter-required columns in data...")
+
         def make_splittername_splitlist_pairs():
             # exclude the testing_only rows from use in splits
             if is_validation:
                 validation_X = list()
                 validation_y = list()
                 for validation_column_name in validation_column_names:
-                    #X_, y_ = _exclude_validation(X, validation_columns[validation_column_name]), _exclude_validation(y, validation_columns[validation_column_name])
+                    # X_, y_ = _exclude_validation(X, validation_columns[validation_column_name]), _exclude_validation(y, validation_columns[validation_column_name])
                     validation_X.append(pd.DataFrame(_exclude_validation(X, validation_columns[validation_column_name])))
                     validation_y.append(pd.DataFrame(_exclude_validation(y, validation_columns[validation_column_name])))
                 idxy_list = list()
@@ -408,7 +425,6 @@ def mastml_run(conf_path, data_path, outdir):
                 Needed only for valdation row stuff.
                 """
                 return tuple(tuple(fix_index(part) for part in split) for split in splits)
-
 
             # Collect all the grouping columns, `None` if not needed
             splitter_to_group_column = dict()
@@ -473,7 +489,7 @@ def mastml_run(conf_path, data_path, outdir):
                 subdir = join(outdir, normalizer_name, selector_name)
 
                 if PlotSettings['feature_vs_target']:
-                    #if selector_name == 'DoNothing': continue
+                    # if selector_name == 'DoNothing': continue
                     # for each selector/normalizer, plot y against each x column
                     for column in X:
                         filename = f'{column}_vs_target.png'
@@ -499,7 +515,7 @@ def mastml_run(conf_path, data_path, outdir):
 
             log.info(f"        Doing split number {split_num}")
             train_X, train_y = X.loc[train_indices], y.loc[train_indices]
-            test_X,  test_y  = X.loc[test_indices],  y.loc[test_indices]
+            test_X, test_y = X.loc[test_indices], y.loc[test_indices]
 
             # split up groups into train and test as well
             if grouping_data is not None:
@@ -512,29 +528,36 @@ def mastml_run(conf_path, data_path, outdir):
 
             log.info("             Fitting model and making predictions...")
             model.fit(train_X, train_y)
-            #joblib.dump(model, join(path, "trained_model.pkl"))
+            # joblib.dump(model, join(path, "trained_model.pkl"))
             if is_classification:
                 # For classification, need probabilty of prediction to make accurate ROC curve (and other predictions??).
-                #TODO:Consider using only predict_proba and not predict() method for classif problems. Have exit escape if probability set to False here.
+                # TODO:Consider using only predict_proba and not predict() method for classif problems. Have exit escape if probability set to False here.
                 # See stackoverflow post:
-                #https: // stats.stackexchange.com / questions / 329857 / what - is -the - difference - between - decision
+                # https: // stats.stackexchange.com / questions / 329857 / what - is -the - difference - between - decision
                 # - function - predict - proba - and -predict - fun
 
-                #params = model.get_params()
-                #if params['probability'] == True:
+                # params = model.get_params()
+                # if params['probability'] == True:
                 try:
                     train_pred_proba = model.predict_proba(train_X)
                     test_pred_proba = model.predict_proba(test_X)
-                except:
-                    log.error('You need to perform classification with model param probability=True enabled for accurate'
-                                ' predictions, if your model has the probability param (e.g. RandomForestClassifier does not. '
-                              'Please reset this parameter as applicable and re-run MASTML')
+                except Exception:
+                    log.error(
+                              'You need to perform classification with '
+                              'model param probability=True enabled '
+                              'for accurate predictions, if your '
+                              'model has the probability param (e.g. '
+                              'RandomForestClassifier does not. '
+                              'Please reset this parameter as applicable '
+                              'and re-run MASTML'
+                              )
+
                     exit()
                 train_pred = model.predict(train_X)
                 test_pred = model.predict(test_X)
             else:
                 train_pred = model.predict(train_X)
-                test_pred  = model.predict(test_X)
+                test_pred = model.predict(test_X)
 
             # here is where we need to collect validation stats
             if is_validation:
@@ -550,12 +573,11 @@ def mastml_run(conf_path, data_path, outdir):
 
                     # save them as 'predicitons.csv'
                     validation_predictions_series = pd.Series(validation_predictions, name='clean_predictions', index=validation_X_forpred.index)
-                    #validation_noinput_series = pd.Series(X_noinput.index, index=validation_X.index)
+                    # validation_noinput_series = pd.Series(X_noinput.index, index=validation_X.index)
                     pd.concat([validation_X_forpred,  validation_y_forpred,  validation_predictions_series],  1)\
                             .to_csv(join(path, 'predictions_'+str(validation_column_name)+'.csv'), index=False)
             else:
                 validation_y = None
-
 
             # Save train and test data and results to csv:
             log.info("             Saving train/test data and predictions to csv...")
@@ -567,7 +589,6 @@ def mastml_run(conf_path, data_path, outdir):
             test_noinput_series = pd.DataFrame(X_noinput, index=test_indices)
             pd.concat([test_X,  test_y,  test_pred_series, test_noinput_series],  1)\
                     .to_csv(join(path, 'test.csv'),  index=False)
-
 
             log.info("             Calculating score metrics...")
             split_path = main_path.split(os.sep)
@@ -651,26 +672,34 @@ def mastml_run(conf_path, data_path, outdir):
             split_results.append(one_fit(split_num, train_indices, test_indices))
 
         log.info("    Calculating mean and stdev of scores...")
+
         def make_train_test_average_and_std_stats():
             train_stats = OrderedDict([('Average Train', None)])
-            test_stats  = OrderedDict([('Average Test', None)])
+            test_stats = OrderedDict([('Average Test', None)])
             for name in metrics_dict:
                 train_values = [split_result['train_metrics'][name] for split_result in split_results]
-                test_values  = [split_result['test_metrics'][name]  for split_result in split_results]
+                test_values = [split_result['test_metrics'][name] for split_result in split_results]
                 train_stats[name] = (np.mean(train_values), np.std(train_values))
-                test_stats[name]  = (np.mean(test_values), np.std(test_values))
+                test_stats[name] = (np.mean(test_values), np.std(test_values))
                 test_stats_single = dict()
                 test_stats_single[name] = (np.mean(test_values), np.std(test_values))
                 if grouping_data is not None:
                     unique_groups = np.union1d(split_results[0]['test_groups'], split_results[0]['train_groups'])
-                    plot_helper.plot_metric_vs_group(metric=name, groups=unique_groups, stats=test_values,
-                                                     avg_stats = test_stats_single, savepath=join(main_path, str(name)+'_vs_group.png'))
+                    plot_helper.plot_metric_vs_group(
+                                                     metric=name,
+                                                     groups=unique_groups,
+                                                     stats=test_values,
+                                                     avg_stats=test_stats_single,
+                                                     savepath=join(main_path, str(name)+'_vs_group.png')
+                                                     )
+
             return train_stats, test_stats
         avg_train_stats, avg_test_stats = make_train_test_average_and_std_stats()
         log.info("    Making best/worst plots...")
+
         def get_best_worst_median_runs():
             # sort splits by the test score of first metric:
-            greater_is_better, _ = next(iter(metrics_dict.values())) # get first value pair
+            greater_is_better, _ = next(iter(metrics_dict.values()))  # get first value pair
             scalar = 1 if greater_is_better else -1
             s = sorted(split_results, key=lambda run: scalar*next(iter(run['test_metrics'])))
             return s[0], s[len(split_results)//2], s[-1]
@@ -706,7 +735,7 @@ def mastml_run(conf_path, data_path, outdir):
 
         return split_results
 
-    runs = do_all_combos(X, y, df) # calls do_one_splitter internally
+    runs = do_all_combos(X, y, df)  # calls do_one_splitter internally
 
     log.info("Making image html file...")
     html_helper.make_html(outdir)
@@ -750,6 +779,7 @@ def _instantiate(kwargs_dict, name_to_constructor, category, X_grouped=None, X_i
                 f"All valid {category}: {list(name_to_constructor.keys())}")
 
     return instantiations
+
 
 if __name__ == '__main__':
     conf_path, data_path, outdir, verbosity = get_commandline_args()

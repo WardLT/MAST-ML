@@ -1,6 +1,7 @@
 __init__ = ['score']
 
-def score(x, models ,splitters):
+
+def score(x, models, splitters):
     if x:
         # Get model
         name = x['estimator']
