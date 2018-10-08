@@ -38,6 +38,7 @@ from .main.learning_score import *
 from .main.argparser import *
 from .main.functions import *
 from .main.pathcheck import *
+from .main.combos import *
 
 import pandas as pd
 import numpy as np
@@ -117,6 +118,7 @@ def mastml_run(conf_path, data_path, outdir):
                                  )
 
     df, X, X_noinput, X_grouped, y = temp
+    del temp
 
     # Perform data cleaning here
     dc = conf['DataCleaning']
@@ -150,6 +152,7 @@ def mastml_run(conf_path, data_path, outdir):
     X_novalidation = temp[2]
     y_novalidation = temp[3]
     X_grouped_novalidation = temp[4]
+    del temp
 
     if conf['PlotSettings']['target_histogram']:
         # First, save input data stats to csv
@@ -234,6 +237,8 @@ def mastml_run(conf_path, data_path, outdir):
                              X_indices=temp
                              )
 
+    del temp
+
     log.debug(f'generators: \n{generators}')
     log.debug(f'clusterers: \n{clusterers}')
     log.debug(f'normalizers: \n{normalizers}')
@@ -248,16 +253,13 @@ def mastml_run(conf_path, data_path, outdir):
                  f"and {len(splitters)} splitters."
                  )
 
-        def generate_features():
-            log.info("Doing feature generation...")
-            dataframes = [instance.fit_transform(df, y) for _, instance in generators]
-            dataframe = pd.concat(dataframes, 1)
-            log.info("Saving generated data to csv...")
-            log.debug(f'generated cols: {dataframe.columns}')
-            filename = join(outdir, "generated_features.csv")
-            pd.concat([dataframe, X_noinput, y], 1).to_csv(filename, index=False)
-            return dataframe
-        generated_df = generate_features()
+        generated_df = generate_features(
+                                         df,
+                                         X_noinput,
+                                         y,
+                                         generators,
+                                         outdir
+                                         )
 
         def remove_constants():
             dataframe = _remove_constant_features(generated_df)
@@ -265,10 +267,12 @@ def mastml_run(conf_path, data_path, outdir):
             filename = join(outdir, "generated_features_no_constant_columns.csv")
             pd.concat([dataframe, X_noinput, y], 1).to_csv(filename, index=False)
             return dataframe
+
         generated_df = remove_constants()
 
         # add in generated features
         X = pd.concat([X, generated_df], axis=1)
+
         # add in generated features to full dataframe
         df = pd.concat([df, generated_df], axis=1)
 
@@ -279,7 +283,9 @@ def mastml_run(conf_path, data_path, outdir):
                 log.warning(f"Throwing away {len(repeated_columns)} because they are repeats.")
                 log.debug(f"Throwing away columns because they are repeats: {repeated_columns}")
                 X = X.loc[:, ~X.columns.duplicated()]
+
             return X
+
         X = remove_repeats(X)
 
         def make_clustered_df():
@@ -287,7 +293,9 @@ def mastml_run(conf_path, data_path, outdir):
             clustered_df = pd.DataFrame()
             for name, instance in clusterers:
                 clustered_df[name] = instance.fit_predict(X, y)
+
             return clustered_df
+
         clustered_df = make_clustered_df()  # Each column is a clustering algorithm
 
         def make_feature_vs_target_plots():
