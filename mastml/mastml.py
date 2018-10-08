@@ -38,7 +38,6 @@ from .main.learning_score import *
 from .main.argparser import *
 from .main.functions import *
 from .main.pathcheck import *
-from .main.combos import *
 
 import pandas as pd
 import numpy as np
@@ -261,14 +260,12 @@ def mastml_run(conf_path, data_path, outdir):
                                          outdir
                                          )
 
-        def remove_constants():
-            dataframe = _remove_constant_features(generated_df)
-            log.info("Saving generated data without constant columns to csv...")
-            filename = join(outdir, "generated_features_no_constant_columns.csv")
-            pd.concat([dataframe, X_noinput, y], 1).to_csv(filename, index=False)
-            return dataframe
-
-        generated_df = remove_constants()
+        generated_df = remove_constants(
+                                        generated_df,
+                                        outdir,
+                                        X_noinput,
+                                        y
+                                        )
 
         # add in generated features
         X = pd.concat([X, generated_df], axis=1)
@@ -277,48 +274,18 @@ def mastml_run(conf_path, data_path, outdir):
         df = pd.concat([df, generated_df], axis=1)
 
         # remove repeat columns (keep the first one)
-        def remove_repeats(X):
-            repeated_columns = X.loc[:, X.columns.duplicated()].columns
-            if not repeated_columns.empty:
-                log.warning(f"Throwing away {len(repeated_columns)} because they are repeats.")
-                log.debug(f"Throwing away columns because they are repeats: {repeated_columns}")
-                X = X.loc[:, ~X.columns.duplicated()]
-
-            return X
-
         X = remove_repeats(X)
 
-        def make_clustered_df():
-            log.info("Doing clustering...")
-            clustered_df = pd.DataFrame()
-            for name, instance in clusterers:
-                clustered_df[name] = instance.fit_predict(X, y)
-
-            return clustered_df
-
-        clustered_df = make_clustered_df()  # Each column is a clustering algorithm
-
-        def make_feature_vs_target_plots():
-            if clustered_df.empty:
-                for column in X:  # plot y against each x column
-                    filename = f'{column}_vs_target_scatter.png'
-                    plot_helper.plot_scatter(X[column], y, join(outdir, filename),
-                                             xlabel=column, groups=None, ylabel='target_feature', label=y.name)
-            else:
-                for name in clustered_df.columns:  # for each cluster, plot y against each x column
-                    for column in X:
-                        filename = f'{column}_vs_target_by_{name}_scatter.png'
-                        plot_helper.plot_scatter(
-                                                 X[column],
-                                                 y,
-                                                 join(outdir, filename),
-                                                 clustered_df[name],
-                                                 xlabel=column,
-                                                 ylabel='target_feature', label=y.name
-                                                 )
+        # Each column is a clustering algorithm
+        clustered_df = make_clustered_df(clusterers)
 
         if PlotSettings['feature_vs_target']:
-            make_feature_vs_target_plots()
+            make_feature_vs_target_plots(
+                                         clustered_df,
+                                         X,
+                                         y,
+                                         outdir
+                                         )
 
         log.info("Saving clustered data to csv...")
         # Add new cluster info to X df
