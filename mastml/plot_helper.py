@@ -521,6 +521,13 @@ def plot_predicted_vs_true_bars(y_true, y_pred_list, avg_stats,
     ax.errorbar(y_true, means, yerr=standard_errors, fmt='o', markerfacecolor='blue', markeredgecolor='black', markersize=10,
                 alpha=0.7, capsize=3)
 
+    '''
+    # Output the needed data
+    d = {'y_true': y_true, 'means': means}
+    df = pd.DataFrame(data=d)
+    df.to_csv(savepath)
+    '''
+
     plot_stats(fig, avg_stats, x_align=x_align, y_align=0.90)
 
     fig.savefig(savepath, dpi=DPI, bbox_inches='tight')

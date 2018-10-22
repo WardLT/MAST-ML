@@ -1,6 +1,9 @@
 __all__ = ['datcln']
 
 from .. import data_cleaner
+import logging
+
+log = logging.getLogger('mastml')
 
 
 def datcln(dc, df, X, X_noinput, X_grouped):
